@@ -1,289 +1,226 @@
 /*-----------ONLOAD INITIALIZATION-----------*/
-window.onload = function(){
-var c = document.querySelector("canvas");
-var canvas = document.querySelector("canvas");
-c.width = innerWidth;
-c.height = innerHeight;
-c = c.getContext("2d");
-  
-/*-----------MOUSE/TOUCH & CONTROLS-----------*/ 
-//mouse and touch objects
-function startGame(){
-mouse = {
-  x: innerWidth/2,
-  y: innerHeight-33
-};
-  
-touch = {
-  x: innerWidth/2,
-  y: innerHeight-33
-};
-  
-//event listener for mouse object
-canvas.addEventListener("mousemove", function(event){
-mouse.x = event.clientX;
-//mouse.y = event.clientY;
-});
-//eventListener for touch object
-canvas.addEventListener("touchmove", function(event){
-  var rect = canvas.getBoundingClientRect();
-  var root = document.documentElement;
-  var touch = event.changedTouches[0];
-  var touchX = parseInt(touch.clientX);
-  var touchY = parseInt(touch.clientY) - rect.top - root.scrollTop;
-  event.preventDefault();
-  mouse.x = touchX;
-  //mouse.y = touchY;
-});
-  
-/*-----------GAME VARIABLES-----------*/  
-//player
-var player_width = 32;
-var player_height = 32;
-var playerImg = new Image();
-var score = 0;
-var health = 100;
+window.onload = function () {
+  const canvasElement = document.querySelector("canvas");
+  canvasElement.width = innerWidth;
+  canvasElement.height = innerHeight;
+  const c = canvasElement.getContext("2d");
 
-function choosePlayer(){
-  var orangeShip = "https://image.ibb.co/n8rayp/rocket.png";
-  var blueShip = "https://image.ibb.co/dfbD1U/heroShip.png";
-  var userInput = prompt("🚀SELECT BATTLESHIP!🚀\n1 is for orange and 2 is for blue ship", 1);   
-  if(userInput==1){
-    playerImg.src = orangeShip;
+  /*-----------MOUSE/TOUCH & CONTROLS-----------*/
+  let mouse = {
+    x: innerWidth / 2,
+    y: innerHeight - 33,
+  };
+
+  // Event listeners for mouse and touch controls
+  canvasElement.addEventListener("mousemove", (event) => {
+    mouse.x = event.clientX;
+  });
+
+  canvasElement.addEventListener("touchmove", (event) => {
+    const touch = event.changedTouches[0];
+    mouse.x = touch.clientX;
+    event.preventDefault();
+  });
+
+  /*-----------GAME VARIABLES-----------*/
+  const player = {
+    width: 32,
+    height: 32,
+    img: new Image(),
+    score: 0,
+    health: 100,
+  };
+
+  const assets = {
+    ships: [
+      "https://image.ibb.co/n8rayp/rocket.png",
+      "https://image.ibb.co/dfbD1U/heroShip.png",
+    ],
+    enemy: "https://image.ibb.co/bX9UuU/ufo_1.png",
+    healthKit: "https://image.ibb.co/iTrjuU/hospital.png",
+    bulletSound: "https://www.dropbox.com/s/w70c8hyryak6w40/Laser-SoundBible.com-602495617.mp3?dl=0",
+  };
+
+  let bullets = [];
+  let enemies = [];
+  let healthKits = [];
+
+  const bullet = {
+    width: 6,
+    height: 28,
+    speed: 6,
+  };
+
+  const enemy = {
+    width: 32,
+    height: 32,
+    speed: 4.5,
+  };
+
+  const healthKit = {
+    width: 32,
+    height: 32,
+    speed: 2.6,
+  };
+
+  // Player selection
+  function choosePlayer() {
+    const userInput = prompt(
+      "🚀SELECT YOUR BATTLESHIP!🚀\n1: Orange Ship\n2: Blue Ship",
+      "1"
+    );
+    player.img.src = assets.ships[userInput === "2" ? 1 : 0];
   }
-  else if(userInput==2){
-    playerImg.src = blueShip;
-  }
-  else{
-    playerImg.src = orangeShip;
-  }
-}choosePlayer();
+  choosePlayer();
 
-//bullet array
-var _bullets = []; //array to hold n bullets
-var bullet_width = 6;
-var bullet_height = 28;
-var bullet_speed = 6;
-//enemy array
-var _enemies = []; //array to hold n enemies
-var enemyImg = new Image();
-enemyImg.src = "https://image.ibb.co/bX9UuU/ufo_1.png"; //"https://image.ibb.co/gi6ZpU/ufo.png";
-var enemy_width = 32;
-var enemy_height = 32;
-//health array
-var _healthkits = []; //array to hold n health kits
-var healthkitImg = new Image();
-healthkitImg.src = "https://image.ibb.co/iTrjuU/hospital.png";  //"https://image.ibb.co/gFvSEU/first_aid_kit.png";
-var healthkit_width = 32;
-var healthkit_height = 32;
-//sounds
-var shot = new Audio();
-shot.src = "https://www.dropbox.com/s/w70c8hyryak6w40/Laser-SoundBible.com-602495617.mp3?dl=0";
+  /*-----------GAME OBJECTS-----------*/
+  class GameObject {
+    constructor(x, y, width, height, img, speed = 0) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.img = img;
+      this.speed = speed;
+    }
 
-/*-----------GAME OBJECTS-----------*/  
-//Player object
-function Player(x, y, width, height){
-  this.x = x;
-  this.y = y;
-  this.width = width;
-  this.height = height;
-  
-  this.draw = function(){
-    c.beginPath();
-    c.drawImage(playerImg, mouse.x-player_width, mouse.y-player_height); //draw player and center cursor
-  };
-  
-  this.update = function(){
-    this.draw();
-  };
-}
+    draw() {
+      c.drawImage(this.img, this.x, this.y, this.width, this.height);
+    }
 
-//Bullet object
-function Bullet(x, y, width, height, speed){
-  this.x = x;
-  this.y = y;
-  this.width = width;
-  this.height = height;
-  this.speed = speed;
-  
-  this.draw = function(){
-    c.beginPath();
-    c.rect(this.x, this.y, this.width, this.height);
-    c.fillStyle = "#fff";
-    c.fill();
-    c.stroke();
-  };
-  
-  this.update = function(){
-    this.y -= this.speed;
-    this.draw();
-  };
-}
-
-//Enemy object
-function Enemy(x, y, width, height, speed){
-  this.x = x;
-  this.y = y;
-  this.width = width;
-  this.height = height;
-  this.speed = speed;
-  
-  this.draw = function(){
-    c.beginPath();
-    c.drawImage(enemyImg, this.x, this.y);
-  };
-  
-  this.update = function(){
-    this.y += this.speed;
-    this.draw();
-  };
-}
-
-//Health kit object  
-function Healthkit(x, y, width, height, speed){
-  this.x = x;
-  this.y = y;
-  this.width = width;
-  this.height = height;
-  this.speed = speed;
-  
-  this.draw = function(){
-    c.beginPath();
-    c.drawImage(healthkitImg, this.x, this.y);
-  };
-  
-  this.update = function(){
-    this.y += this.speed;
-    this.draw();
-  };
-}
-  
-/*-----------_new OBJECT-----------*/  
-//draw Player
-var __player = new Player(mouse.x, mouse.y, player_width, player_height);
-
-//draw n enemies into enemies array
-function drawEnemies(){
-  for (var _ = 0; _<4; _++){ //enemy with random x axis, -32 as y axis, enemy_width, enemy_height, random speed  
-    var x = Math.random()*(innerWidth-enemy_width);
-    var y = -enemy_height; //-height to draw above canvas for smooth income
-    var width = enemy_width;
-    var height = enemy_height;
-    var speed = Math.random()*4.5;
-    var __enemy = new Enemy(x, y, width, height, speed);
-    _enemies.push(__enemy); //push enemy to my array of enemies
-  }
-}setInterval(drawEnemies, 1234);
-  
-  
-//draw health kits
-function drawHealthkits(){
-  for (var _ = 0; _<1; _++){ //health with random x axis, -32 as y axis, healthkit_width, healthkit_height, random speed  
-    var x = Math.random()*(innerWidth-enemy_width);
-    var y = -enemy_height; //-height to draw above canvas for smooth income
-    var width = healthkit_width;
-    var height = healthkit_height;
-    var speed = Math.random()*2.6;
-    var __healthkit = new Healthkit(x, y, width, height, speed);
-    _healthkits.push(__healthkit); //push healthkit to my array of healthkits
-  }
-}setInterval(drawHealthkits, 15000);
-
-//draw bullet
-//var __bullet = new Bullet(mouse.x-bullet_width/2, mouse.y-player_height, bullet_width, bullet_height, bullet_speed);  
-  
-//fire bullet function
-function fire(){ //fire bullet from mouse.x on x axis, y axis, width, height, speed
-  for (var _ = 0; _<1; _++){
-    var x = mouse.x-bullet_width/2;
-    var y = mouse.y-player_height;
-    var __bullet = new Bullet(x, y, bullet_width, bullet_height, bullet_speed);
-    _bullets.push(__bullet); //push bullet to my array of bullets
-    //shot.play();
-  }
-}setInterval(fire, 200);
-  
-//event listener for fire function
-canvas.addEventListener("click", function(){
-  //fire();
-});
-  
-/*-----------COLLISION DETECTION-----------*/
-function collision(a,b){
-  return a.x < b.x + b.width &&
-         a.x + a.width > b.x &&
-         a.y < b.y + b.height &&
-         a.y + a.height > b.y;
-}
-/*-----------SCORE-----------*/
-c.fillStyle = "white";
-c.font = "1em Arial";
-
-/*-----------DIRTY ERROR HANDLING-----------*/
-function stoperror() {
-  return true;
-}  
-window.onerror = stoperror;
-  
-/*-----------GAME LOOP-----------*/
-function animate(){
-  requestAnimationFrame(animate); //animate
-  c.beginPath(); //begin
-  c.clearRect(0,0,innerWidth,innerHeight); //clear canvas
-  c.fillText("Health: " + health, 5, 20); //health
-  c.fillText("Score: " + score, innerWidth-100, 20); //score
-  
-/*-----------__player, __bullet, __enemy update, __healthkit update-----------*/
-  //update _player
-  __player.update();
-  //update bullets from bullets array
-  for (var i=0; i < _bullets.length; i++){
-    _bullets[i].update();
-    if (_bullets[i].y < 0){
-      _bullets.splice(i, 1);
+    update() {
+      this.y += this.speed;
+      this.draw();
     }
   }
-  //update enemies from enemies array
-  for (var k=0; k < _enemies.length; k++){
-    _enemies[k].update();
-    //if enemy is below canvas, delete it
-    if(_enemies[k].y > innerHeight){
-      _enemies.splice(k, 1);
-      health -= 10;
-    if(health == 0){
-      alert("You have been killed!\nYour score was "+score);
-      startGame();
-     }
+
+  // Fire bullets
+  function fireBullet() {
+    const bulletObj = new GameObject(
+      mouse.x - bullet.width / 2,
+      mouse.y - player.height,
+      bullet.width,
+      bullet.height,
+      null,
+      -bullet.speed
+    );
+    bullets.push(bulletObj);
+  }
+
+  // Spawn enemies
+  function spawnEnemies() {
+    for (let i = 0; i < 4; i++) {
+      const x = Math.random() * (canvasElement.width - enemy.width);
+      const y = -enemy.height;
+      const speed = Math.random() * enemy.speed + 1;
+      const enemyObj = new GameObject(
+        x,
+        y,
+        enemy.width,
+        enemy.height,
+        new Image(),
+        speed
+      );
+      enemyObj.img.src = assets.enemy;
+      enemies.push(enemyObj);
     }
   }
-  
-  //loop over both enemies and bullets to detect collisions
-  for(var j = _enemies.length-1; j >= 0; j--){
-    for(var l = _bullets.length-1; l >= 0; l--){
-      if(collision(_enemies[j], _bullets[l])){
-        _enemies.splice(j, 1);
-        _bullets.splice(l, 1);
-        score++;
+  setInterval(spawnEnemies, 1500);
+
+  // Spawn health kits
+  function spawnHealthKits() {
+    const x = Math.random() * (canvasElement.width - healthKit.width);
+    const y = -healthKit.height;
+    const speed = Math.random() * healthKit.speed + 1;
+    const healthKitObj = new GameObject(
+      x,
+      y,
+      healthKit.width,
+      healthKit.height,
+      new Image(),
+      speed
+    );
+    healthKitObj.img.src = assets.healthKit;
+    healthKits.push(healthKitObj);
+  }
+  setInterval(spawnHealthKits, 15000);
+
+  /*-----------COLLISION DETECTION-----------*/
+  function detectCollision(a, b) {
+    return (
+      a.x < b.x + b.width &&
+      a.x + a.width > b.x &&
+      a.y < b.y + b.height &&
+      a.y + a.height > b.y
+    );
+  }
+
+  /*-----------GAME LOOP-----------*/
+  function gameLoop() {
+    c.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+    // Draw score and health
+    c.fillStyle = "white";
+    c.font = "16px Arial";
+    c.fillText(`Score: ${player.score}`, 10, 20);
+    c.fillText(`Health: ${player.health}`, canvasElement.width - 100, 20);
+
+    // Draw player
+    c.drawImage(player.img, mouse.x - player.width / 2, mouse.y - player.height);
+
+    // Update bullets
+    bullets = bullets.filter((bulletObj) => {
+      bulletObj.update();
+      return bulletObj.y > 0;
+    });
+
+    // Update enemies
+    enemies = enemies.filter((enemyObj) => {
+      enemyObj.update();
+      if (enemyObj.y > canvasElement.height) {
+        player.health -= 10;
+        return false;
+      }
+      return true;
+    });
+
+    // Check collisions between bullets and enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        if (detectCollision(enemies[i], bullets[j])) {
+          enemies.splice(i, 1);
+          bullets.splice(j, 1);
+          player.score += 10;
+          break;
+        }
       }
     }
-  }
-  
-  //draw healthkits
-  for(var h=0; h < _healthkits.length; h++){
-    _healthkits[h].update();
-  }
-  //loop over both healthkits and bullets to detect collisions
-  for(var hh = _healthkits.length-1; hh >= 0; hh--){
-    for(var hhh = _bullets.length-1; hhh >= 0; hhh--){
-      if(collision(_healthkits[hh], _bullets[hhh])){
-        _healthkits.splice(hh, 1);
-        _bullets.splice(hhh, 1);
-        health += 10;
+
+    // Update health kits
+    healthKits = healthKits.filter((healthKitObj) => {
+      healthKitObj.update();
+      if (detectCollision(healthKitObj, { x: mouse.x, y: mouse.y, width: 1, height: 1 })) {
+        player.health += 10;
+        return false;
       }
+      return true;
+    });
+
+    // Check for game over
+    if (player.health <= 0) {
+      alert(`Game Over! Your score: ${player.score}`);
+      window.location.reload();
     }
-  } 
-  
-} //animate func
-animate();
-}startGame();//startGame function starts/restarts game
-}; //end of onload func
+
+    requestAnimationFrame(gameLoop);
+  }
+
+  gameLoop();
+
+  // Event listener for firing bullets
+  canvasElement.addEventListener("click", fireBullet);
+  window.addEventListener("resize", () => {
+    canvasElement.width = innerWidth;
+    canvasElement.height = innerHeight;
+  });
+};
