@@ -28,7 +28,7 @@ window.onload = function () {
     height: 32,
     img: new Image(),
     score: 0,
-    health: 100,
+    health: 1000000,
   };
 
   const assets = {
